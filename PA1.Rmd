@@ -1,0 +1,157 @@
+# Reproduceable Research - Course Assignment # 1
+
+
+##Loading and preprocessing the data
+1. First we will set the working directory and load the packages
+```{r}
+setwd("~/Documents/R Working Directory/Course_5_Reproducable_Research/")
+```
+
+2. Next we will load the data and store it into a variable we will call ActivityDataSet; per the assignments instructions we will not exclude the NA items at this time
+```{r}
+ActivityDataSet <- read.csv("activity.csv", header=TRUE, sep=",")
+head(ActivityDataSet)
+```
+###DAILY ACTIVITY ANALYSIS
+
+#### What is mean total number of steps taken per day?
+4. We will now find the mean number of steps in the data set - please note I have ignored the NA items
+```{r}
+MeanNumberOfSteps <-mean(ActivityDataSet$steps, na.rm=TRUE)
+MeanNumberOfSteps
+```
+
+#### Calculate the total number of steps taken per day
+5. We will aggregate the information to a daily basis and find the total, the mean and median
+```{r}
+TotalStepsPerDay <-with(ActivityDataSet,tapply(steps,date,sum,na.rm=TRUE))
+hist(TotalStepsPerDay)
+summary(TotalStepsPerDay)
+```
+#### Make a histogram of the total number of steps taken each day
+```{r}
+hist(TotalStepsPerDay, xlab = "Number of Steps", ylab="Frequency", main = "Histogram of Total Steps Per Day")
+```
+
+#### Calculate and report the mean and median of the total number of steps taken per day
+```{r} 
+DailyMean <-mean(TotalStepsPerDay)
+DailyMedian <-median(TotalStepsPerDay)
+summary(TotalStepsPerDay)
+```
+
+#### What is the average daily activity pattern?
+The Average daily activity pattern is approximately `r as.integer(DailyMean)` Steps per day
+
+#### Make a time series plot (i.e. 𝚝𝚢𝚙𝚎 = "𝚕") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+6. First we will calculate the average number of steps across all of the days for the specified time periods
+```{r}
+
+AverageStepsPer5minPeriod <-with(ActivityDataSet,tapply(steps,interval,mean,na.rm=TRUE))
+
+```
+
+7. Next we will plot the average steps for each interval across all of the days 
+```{r}
+barplot(AverageStepsPer5minPeriod, 
+        xlab = "Interval", 
+        ylab="Average Number of Steps", 
+        main = "Average Number of Steps Per Interval for the 30 day span"
+        )
+```
+
+#### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+The 5-minute interval with the max average number of daily steps is NEED TO CALCULATE with approximately `r as.integer(max(AverageStepsPer5minPeriod))` steps
+
+##Imputing missing values
+
+Note that there are a number of days/intervals where there are missing values (coded as 𝙽𝙰). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+###Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with 𝙽𝙰s)
+```{r}
+EmptyRows <-subset(ActivityDataSet,is.na(ActivityDataSet$steps))
+nrow(EmptyRows)
+```
+
+Therefore there are 'r nrow(EmptyRows)' in the data set.
+
+###Devise a strategy for filling in all of the missing values in the dataset.   The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+8. This is an interesting challenge.  I will use the mean for the interval (ignoring NAs) as I believe that it will be better fit than the daily mean  
+
+I will first calculate the mean for each day using the TAPPLY function
+```{r}
+IntervalMean <-aggregate(ActivityDataSet$steps,list(ActivityDataSet$interval),mean, na.rm=TRUE)
+head(IntervalMean)
+```
+
+After we've calculated the Interval mean, we will create a data set that replaces the NA's with the interval mean
+```{r}
+DF2 <- ActivityDataSet
+head(DF2) 
+NAs.a <-is.na(DF2$steps)
+head(NAs.a)
+DF2$steps[NAs.a] <-IntervalMean[match(DF2$interval[NAs.a], IntervalMean$Group.1), ]$x
+head(DF2)
+```
+
+##Make a histogram of the total number of steps taken each day and 
+```{r}
+TotalStepsPerDay2 <-with(DF2,tapply(steps,date,sum))
+hist(TotalStepsPerDay2, xlab="Daily Steps", ylab="Number of Days", main = "Daily Step Count Histogram with Imputed Values for NA Entries")
+```
+
+##Calculate and report the mean and median total number of steps taken per day. 
+
+```{r}
+summary(TotalStepsPerDay2)
+```
+
+##Do these values differ from the estimates from the first part of the assignment? 
+Yes the values differ from the first part of the assignment.  
+
+##What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+Imputing the missing data by subsitituiting the mean for the given time period changes the way that the days are distributed.  In part 1 there was ~25 days where people took between 10,000 and 15,000 steps.  Also we see more days with over 15,000 steps in Part 2 and fewer days with less than 10,000 steps
+
+```{r}
+par(mfcol=c(1,2), mar=c(2,2,2,2))
+
+hist(TotalStepsPerDay, xlab="Daily Steps", ylab="Number of Days", main = "Daily Step Count Histogram with NA Entries Omitted")
+hist(TotalStepsPerDay2, xlab="Daily Steps", ylab="Number of Days", main = "Daily Step Count Histogram with Imputed Values for NA Entries")
+```
+
+### Weekday vs. Weekend Analysis
+
+##Are there differences in activity patterns between weekdays and weekends?
+
+##Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r}
+DF2$DayOfWeek <- weekdays(as.Date(DF2$date))
+
+for (i in 1:nrow(DF2))
+    {
+        DF2$WDorWE[i] <- 
+            if (DF2$DayOfWeek[i] == "Saturday") {"Weekend"
+        } else if(DF2$DayOfWeek[i] == "Sunday") {"Weekend"
+        } else{"Weekday"}
+    }
+```
+
+##Make a panel plot containing a time series plot (i.e. 𝚝𝚢𝚙𝚎 = "𝚕") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r}
+par(mfcol=c(1,2), mar=c(2,2,2,2))
+DF3  <-subset(DF2,DF2$WDorWE=="Weekday")
+DF4  <-subset(DF2,DF2$WDorWE=="Weekend")
+AverageStepsPerWeekday <-aggregate(DF3$steps,list(DF3$interval),mean)
+AverageStepsPerWeekend <-aggregate(DF4$steps,list(DF4$interval),mean)
+
+plot(AverageStepsPerWeekday$Group.1, AverageStepsPerWeekday$x, type="l", xlab="Time of Day", ylab="Average Steps Per Day", main="Average Steps per Week Day")
+plot(AverageStepsPerWeekend$Group.1, AverageStepsPerWeekend$x, type="l", xlab="Time of Day", ylab="Average Steps Per Day", main="Average Steps per Week End")
+
+```
+
+Based on the plots we can see that during the week step activity peaks around 12:00 and 18:00, on the weekends the step activity is spread out across theday
